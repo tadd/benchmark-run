@@ -1,0 +1,63 @@
+#!/bin/bash -eu
+
+prog=$(basename $0)
+nicedec=10
+ntimes=1
+
+function _set_smt() {
+    [[ $( cat /sys/devices/system/cpu/smt/control ) == notsupported ]] && return
+    local -r needset=$1
+    local sw
+
+    if ((needset)); then sw=off; else sw=on; fi
+    echo $sw | sudo tee /sys/devices/system/cpu/smt/control >/dev/null
+}
+
+function _set() {
+    local -r needset=$(($1))
+    local -r inv=$((!needset))
+
+    # ensure part
+    sudo cpupower -c all frequency-set -g performance >/dev/null
+    sudo sysctl kernel.randomize_va_space=0 >/dev/null
+
+    # depends on the arg
+    ## Turbo Boost
+    sudo x86_energy_perf_policy -c all -t $inv
+    ## Hyper Threading
+    _set_smt $needset
+}
+
+function _run() {
+    trap '_set 0; exit 1' HUP INT QUIT TRAP TERM
+    _set 1
+
+    for i in {1..$ntimes}; do
+        sudo nice -n -$nicedec \
+             sudo -u $USER \
+             taskset -c 0 \
+             $@ 
+    done
+
+    _set 0
+}
+
+function message() {
+    echo "$prog: $1" >&2
+}
+
+if [ $# = 0 ]; then
+    message "one or more arguments needed to be run"
+    exit 1
+fi
+
+while getopts n: opt; do
+    case $opt in
+        n)
+            ntimes=$OPTARG
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+_run $@
