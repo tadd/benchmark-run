@@ -36,7 +36,7 @@ function _run() {
         sudo nice -n -$nicedec \
              sudo -u $USER \
              taskset -c 0 \
-             $@ 
+             $@
     done
 
     _set 0
