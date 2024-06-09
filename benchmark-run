@@ -34,7 +34,7 @@ function _run() {
 
     for i in {1..$ntimes}; do
         sudo nice -n -$nicedec \
-             sudo -u $USER \
+             sudo PATH="$PATH" -u $USER \
              taskset -c 0 \
              $@
     done
