@@ -6,16 +6,15 @@ ntimes=1
 
 function set_smt() {
     [[ $( cat /sys/devices/system/cpu/smt/control ) == notsupported ]] && return
-    local -r needset=$1
     local sw
 
-    if ((needset)); then sw=off; else sw=on; fi
+    if ((benchmark_mode)); then sw=off; else sw=on; fi
     echo $sw | sudo tee /sys/devices/system/cpu/smt/control >/dev/null
 }
 
 function set_modes() {
-    local -r needset=$(($1))
-    local -r inv=$((!needset))
+    local -r benchmark_mode=$1
+    local -r inv=$((!benchmark_mode))
 
     # ensure part; almost has no side effects for performance-oriented env
     sudo cpupower -c all frequency-set -g performance >/dev/null
@@ -25,7 +24,7 @@ function set_modes() {
     ## Turbo Boost (Disable for benchmark)
     sudo x86_energy_perf_policy -c all -t $inv
     ## Hyper Threading (Disable for benchmark)
-    set_smt $needset
+    set_smt $benchmark_mode
 }
 
 function run_cmd() {
