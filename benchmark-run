@@ -7,9 +7,8 @@ ntimes=1
 function set_smt() {
     [[ $( cat /sys/devices/system/cpu/smt/control ) == notsupported ]] && return
     local sw
-
     if ((benchmark_mode)); then sw=off; else sw=on; fi
-    echo $sw | sudo tee /sys/devices/system/cpu/smt/control >/dev/null
+    echo $sw | tee /sys/devices/system/cpu/smt/control >/dev/null
 }
 
 function set_modes() {
@@ -17,12 +16,12 @@ function set_modes() {
     local -r inv=$((!benchmark_mode))
 
     # ensure part; almost has no side effects for performance-oriented env
-    sudo cpupower -c all frequency-set -g performance >/dev/null
-    sudo sysctl kernel.randomize_va_space=0 >/dev/null
+    cpupower -c all frequency-set -g performance >/dev/null
+    sysctl kernel.randomize_va_space=0 >/dev/null
 
     # depends on the arg
     ## Turbo Boost (Disable for benchmark)
-    sudo x86_energy_perf_policy -c all -t $inv
+    x86_energy_perf_policy -c all -t $inv
     ## Hyper Threading (Disable for benchmark)
     set_smt $benchmark_mode
 }
@@ -33,12 +32,11 @@ function run_cmd() {
     set_modes 1 # Switch to benchmark mode
 
     for i in {1..$ntimes}; do
-        # nice: Nice value (Decrease (higher priority) for benchmark), needs sudo
-        # taskset: Limit used CPU cores (Fix for benchmark), don't need sudo
-        sudo nice -n -$nicedec \
-             sudo PATH="$PATH" -u $USER \
-             taskset -c 0 \
-             "$@"
+        # nice: Nice value (Decrease (higher priority) for benchmark), needs to be root
+        # taskset: Limit used CPU cores (Fix for benchmark), better not to be root
+        nice -n -$nicedec \
+        sudo PATH="${origpath:-$PATH}" -u $USER \
+        taskset -c 0 $@
     done
 
     set_modes 0 # Back to usual, non-benchmark mode
@@ -48,7 +46,15 @@ function message() {
     echo "$prog: $@" >&2
 }
 
+function ensure_su() {
+    if (( $(id -u) )); then
+        exec sudo origpath="$PATH" "$0" "$@"
+    fi
+}
+
 function main() {
+    ensure_su "$@"
+
     if (( $# == 0 )); then
         message "one or more arguments needed to be run"
         exit 1
