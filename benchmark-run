@@ -4,7 +4,7 @@ prog=$(basename $0)
 nicedec=10
 ntimes=1
 
-function _set_smt() {
+function set_smt() {
     [[ $( cat /sys/devices/system/cpu/smt/control ) == notsupported ]] && return
     local -r needset=$1
     local sw
@@ -13,51 +13,58 @@ function _set_smt() {
     echo $sw | sudo tee /sys/devices/system/cpu/smt/control >/dev/null
 }
 
-function _set() {
+function set_modes() {
     local -r needset=$(($1))
     local -r inv=$((!needset))
 
-    # ensure part
+    # ensure part; almost has no side effects for performance-oriented env
     sudo cpupower -c all frequency-set -g performance >/dev/null
     sudo sysctl kernel.randomize_va_space=0 >/dev/null
 
     # depends on the arg
-    ## Turbo Boost
+    ## Turbo Boost (Disable for benchmark)
     sudo x86_energy_perf_policy -c all -t $inv
-    ## Hyper Threading
-    _set_smt $needset
+    ## Hyper Threading (Disable for benchmark)
+    set_smt $needset
 }
 
-function _run() {
-    trap '_set 0; exit 1' HUP INT QUIT TRAP TERM
-    _set 1
+function run_cmd() {
+    # Ensure to back to normal
+    trap 'set_smt 0; exit 1' HUP INT QUIT TRAP TERM
+    set_modes 1 # Switch to benchmark mode
 
     for i in {1..$ntimes}; do
+        # nice: Nice value (Decrease (higher priority) for benchmark), needs sudo
+        # taskset: Limit used CPU cores (Fix for benchmark), don't need sudo
         sudo nice -n -$nicedec \
              sudo PATH="$PATH" -u $USER \
              taskset -c 0 \
-             $@
+             "$@"
     done
 
-    _set 0
+    set_modes 0 # Back to usual, non-benchmark mode
 }
 
 function message() {
     echo "$prog: $1" >&2
 }
 
-if [ $# = 0 ]; then
-    message "one or more arguments needed to be run"
-    exit 1
-fi
+function main() {
+    if (( $# == 0 )); then
+        message "one or more arguments needed to be run"
+        exit 1
+    fi
 
-while getopts n: opt; do
-    case $opt in
-        n)
-            ntimes=$OPTARG
-            ;;
-    esac
-done
-shift $((OPTIND-1))
+    while getopts n: opt "$@"; do
+        case $opt in
+            n)
+                ntimes=$OPTARG
+                ;;
+        esac
+    done
 
-_run $@
+    shift $((OPTIND-1))
+    run_cmd "$@"
+}
+
+main "$@"
