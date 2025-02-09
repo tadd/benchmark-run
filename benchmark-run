@@ -36,7 +36,7 @@ function run_cmd() {
         # taskset: Limit used CPU cores (Fix for benchmark), better not to be root
         nice -n -$nicedec \
         sudo PATH="${origpath:-$PATH}" -u $USER \
-        taskset -c 0 $@
+        taskset -c 0 "$@"
     done
 
     set_modes 0 # Back to usual, non-benchmark mode
