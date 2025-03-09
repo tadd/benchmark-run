@@ -35,7 +35,7 @@ function run_cmd() {
         # nice: Nice value (Decrease (higher priority) for benchmark), needs to be root
         # taskset: Limit used CPU cores (Fix for benchmark), better not to be root
         nice -n -$nicedec \
-        sudo PATH="${origpath:-$PATH}" -u $USER \
+        sudo PATH="${origpath:-$PATH}" -u "${origuser:-$USER}" \
         taskset -c 0 "$@"
     done
 
@@ -48,7 +48,7 @@ function message() {
 
 function ensure_su() {
     if (( $(id -u) )); then
-        exec sudo origpath="$PATH" "$0" "$@"
+        exec sudo origpath="$PATH" origuser="$USER" "$0" "$@"
     fi
 }
 
