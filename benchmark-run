@@ -28,7 +28,7 @@ function set_modes() {
 
 function run_cmd() {
     # Ensure to back to normal
-    trap 'set_smt 0; exit 1' HUP INT QUIT TRAP TERM
+    trap 'set_modes 0; exit 1' HUP INT QUIT TRAP TERM
     set_modes 1 # Switch to benchmark mode
 
     for i in $(seq $ntimes); do
