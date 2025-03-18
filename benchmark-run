@@ -11,13 +11,26 @@ function set_smt() {
     echo $sw | tee /sys/devices/system/cpu/smt/control >/dev/null
 }
 
+declare -a orig_modes=()
+
+function save_modes() {
+    local -r gov=$(cpupower -c all frequency-info | sed -nr '/"/s/.*"(.*)".*/\1/p' | head -1)
+    local -r sp=$(sysctl kernel.randomize_va_space | sed -n 's/.*= *//p')
+    orig_modes+=($gov)
+    orig_modes+=($sp)
+}
+
 function set_modes() {
     local -r benchmark_mode=$1
     local -r inv=$((!benchmark_mode))
 
-    # ensure part; almost has no side effects for performance-oriented env
-    cpupower -c all frequency-set -g performance >/dev/null
-    sysctl kernel.randomize_va_space=0 >/dev/null
+    local gov=performance sp=0
+    if (( inv )); then
+        gov="${orig_modes[0]}"
+        sp="${orig_modes[1]}"
+    fi
+    cpupower -c all frequency-set -g $gov >/dev/null
+    sysctl kernel.randomize_va_space=$sp >/dev/null
 
     # depends on the arg
     ## Turbo Boost (Disable for benchmark)
@@ -28,6 +41,7 @@ function set_modes() {
 
 function run_cmd() {
     # Ensure to back to normal
+    save_modes
     trap 'set_modes 0; exit 1' EXIT
     set_modes 1 # Switch to benchmark mode
 
