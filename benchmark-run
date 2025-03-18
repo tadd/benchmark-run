@@ -5,9 +5,9 @@ nicedec=10
 ntimes=1
 
 function set_smt() {
-    [[ $( cat /sys/devices/system/cpu/smt/control ) == notsupported ]] && return
-    local sw
-    if ((benchmark_mode)); then sw=off; else sw=on; fi
+    [[ $(cat /sys/devices/system/cpu/smt/control) == notsupported ]] && return
+    local on=$1 sw
+    if ((on)); then sw=on; else sw=off; fi
     echo $sw | tee /sys/devices/system/cpu/smt/control >/dev/null
 }
 
@@ -26,8 +26,8 @@ function set_modes() {
 
     local gov=performance sp=0
     if (( inv )); then
-        gov="${orig_modes[0]}"
-        sp="${orig_modes[1]}"
+        gov=${orig_modes[0]}
+        sp=${orig_modes[1]}
     fi
     cpupower -c all frequency-set -g $gov >/dev/null
     sysctl kernel.randomize_va_space=$sp >/dev/null
@@ -36,7 +36,7 @@ function set_modes() {
     ## Turbo Boost (Disable for benchmark)
     x86_energy_perf_policy -c all -t $inv
     ## Hyper Threading (Disable for benchmark)
-    set_smt $benchmark_mode
+    set_smt $inv
 }
 
 function run_cmd() {
@@ -46,7 +46,7 @@ function run_cmd() {
     set_modes 1 # Switch to benchmark mode
 
     for i in $(seq $ntimes); do
-        # nice: Nice value (Decrease (higher priority) for benchmark), needs to be root
+        # nice: Set nice value (Decrease (higher priority) for benchmark), needs to be root
         # taskset: Limit used CPU cores (Fix for benchmark), better not to be root
         nice -n -$nicedec \
         sudo PATH="${origpath:-$PATH}" -u "${origuser:-$USER}" \
