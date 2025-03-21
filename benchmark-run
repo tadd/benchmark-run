@@ -42,7 +42,7 @@ function set_modes() {
 function run_cmd() {
     # Ensure to back to normal
     save_modes
-    trap 'set_modes 0' EXIT # Back to usual, non-benchmark mode
+    trap 'set_modes 0' RETURN # Back to usual, non-benchmark mode
     set_modes 1 # Switch to benchmark mode
 
     for i in $(seq $ntimes); do
