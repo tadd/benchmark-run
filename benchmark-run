@@ -32,10 +32,10 @@ function set_modes() {
     cpupower -c all frequency-set -g $gov >/dev/null
     sysctl kernel.randomize_va_space=$sp >/dev/null
 
-    # depends on the arg
-    ## Turbo Boost (Disable for benchmark)
+    # Disabled features to be stable
+    ## Turbo Boost
     x86_energy_perf_policy -c all -t $inv
-    ## Hyper Threading (Disable for benchmark)
+    ## Hyper Threading
     set_smt $inv
 }
 
